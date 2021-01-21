@@ -20,6 +20,7 @@ type NodeValue interface{}
 type Radix interface {
 	Add(string, NodeValue) error
 	Get(string) (NodeValue, error)
+	GetValue(string) (NodeValue, bool)
 	Delete(string) error
 }
 
@@ -103,25 +104,79 @@ START:
 	return n, ErrNotFound
 }
 
+func (n *node) GetValue(key string) (NodeValue, bool) {
+	value, err := n.Get(key)
+	if err == nil && value != nil {
+		return value, true
+	}
+	return nil, false
+}
+
 func (n *node) Delete(key string) error {
-	var parent *node
+	var (
+		ancestor []*node = make([]*node, 10)
+		parent   *node
+	)
+
 START:
 	if n.key == key {
 		if len(n.children) != 0 {
 			n.value = nil
 		} else if parent != nil {
+			indices := []byte{}
 			children := []*node{}
-			for _, child := range parent.children {
+			for i, child := range parent.children {
 				if child.key == key {
 					continue
 				}
 				children = append(children, child)
+				indices = append(indices, parent.indices[i])
 			}
-			parent.children = children
+			if parent.value == nil {
+				if len(children) == 0 {
+					for i := len(ancestor) - 2; i >= 0; i-- {
+						if ancestor[i].value != nil || len(ancestor[i].children) > 1 {
+							indices := []byte{}
+							children := []*node{}
+							for j, child := range ancestor[i].children {
+								if child.key == ancestor[i+1].key {
+									continue
+								}
+								children = append(children, child)
+								indices = append(indices, ancestor[i].indices[j])
+							}
+							if len(children) == 1 {
+								child := children[0]
+								ancestor[i].key += child.key
+								ancestor[i].value = child.value
+								ancestor[i].indices = child.indices
+								ancestor[i].children = child.children
+							} else {
+								ancestor[i].children = children
+								ancestor[i].indices = indices
+							}
+							break
+						}
+					}
+				} else if len(children) == 1 {
+					child := children[0]
+					parent.key += child.key
+					parent.value = child.value
+					parent.indices = []byte{}
+					parent.children = []*node{}
+				} else {
+					parent.children = children
+					parent.indices = indices
+				}
+			} else {
+				parent.children = children
+				parent.indices = indices
+			}
 		}
 		return nil
 	} else if len(n.key) < len(key) && key[:len(n.key)] == n.key {
 		parent = n
+		ancestor = append(ancestor, n)
 		key = key[len(n.key):]
 		for i := 0; i < len(n.indices); i++ {
 			if key[0] == n.indices[i] {
@@ -134,7 +189,6 @@ START:
 }
 
 func (n *node) walk(pos, depth int) string {
-
 	if pos < 0 {
 		pos = 0
 	}

@@ -37,5 +37,13 @@ func main() {
 	fmt.Println(radix.Delete("bcefg"))
 	fmt.Println(radix.Delete("abc"))
 	fmt.Println(radix.Delete("bcef"))
+	fmt.Println(radix.Delete("abcd"))
 	fmt.Println(radix)
+
+	// fmt.Println(radix.GetValue("bc"))
+	// fmt.Println(radix.GetValue("bcd"))
+	// fmt.Println(radix.GetValue("bce"))
+	// fmt.Println(radix.GetValue("bcef"))
+	// fmt.Println(radix.GetValue("bcee"))
+	// fmt.Println(radix.GetValue("abcd"))
 }
